@@ -1,0 +1,24 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X 热帖</title><style>
+body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f6f8;color:#222}
+header{position:sticky;top:0;background:#fff;z-index:2;box-shadow:0 1px 4px #0001}
+.tabs{display:flex}.tabs button{flex:1;padding:14px;border:0;background:none;font-size:17px;border-bottom:3px solid transparent}
+.tabs button.on{border-color:#1d9bf0;color:#1d9bf0;font-weight:600}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 10px;white-space:nowrap}
+.chips button{border:1px solid #ccd;border-radius:16px;background:#fff;padding:6px 12px;font-size:14px}
+.chips button.on{background:#1d9bf0;color:#fff;border-color:#1d9bf0}
+main{padding:10px;max-width:760px;margin:auto}.card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px}
+.m{font-size:13px;color:#667;margin-bottom:6px}.v{color:#e0245e;font-weight:600}.x{white-space:pre-wrap;word-break:break-word;font-size:15px}
+a{color:#1d9bf0;font-size:14px}h3{margin:14px 4px 8px}.ft{text-align:center;color:#999;font-size:12px;padding:10px}
+</style></head><body><header><div class="tabs"><button id="t1" class="on">博主</button><button id="t2">24H热贴</button></div><div class="chips" id="chips"></div></header>
+<main id="main">加载中…</main><div class="ft" id="ft"></div><script>
+const f=n=>n>=1e4?(n/1e4).toFixed(1)+'万':n;const e=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let D,tab='c',sel=null;
+fetch('data.json?'+Date.now()).then(r=>r.json()).then(d=>{D=d;sel=d.creators[0]&&d.creators[0].u;ft.textContent='数据更新于 '+d.built+'（北京时间）';draw()});
+t1.onclick=()=>{tab='c';draw()};t2.onclick=()=>{tab='d';draw()};
+function draw(){t1.className=tab=='c'?'on':'';t2.className=tab=='d'?'on':'';
+if(tab=='c'){chips.style.display='flex';chips.innerHTML=D.creators.map(c=>`<button data-u="${c.u}" class="${c.u==sel?'on':''}">${e(c.n)} (${c.posts.length})</button>`).join('');
+chips.querySelectorAll('button').forEach(b=>b.onclick=()=>{sel=b.dataset.u;draw();scrollTo(0,0)});
+const c=D.creators.find(c=>c.u==sel);main.innerHTML=`<h3>${e(c.n)} @${c.u}${c.f?' · 粉丝 '+f(c.f):''}</h3>`+(c.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ❤ ${f(p.l)} · ${p.t}</div><div class="x">${e(p.x)}</div><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')||'暂无')}
+else{chips.style.display='none';main.innerHTML=D.days.map(d=>`<h3>${d.d}（${d.posts.length} 条）</h3>`+d.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ${e(p.a)} · ${p.t}</div><div class="x">${e(p.x)}</div><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')).join('')}}
+</script></body></html>

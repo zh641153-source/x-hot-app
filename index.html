@@ -8,7 +8,7 @@ header{position:sticky;top:0;background:#fff;z-index:2;box-shadow:0 1px 4px #000
 .chips button{border:1px solid #ccd;border-radius:16px;background:#fff;padding:6px 12px;font-size:14px}
 .chips button.on{background:#1d9bf0;color:#fff;border-color:#1d9bf0}
 main{padding:10px;max-width:760px;margin:auto}.card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px}
-.m{font-size:13px;color:#667;margin-bottom:6px}.v{color:#e0245e;font-weight:600}.x{white-space:pre-wrap;word-break:break-word;font-size:15px}
+.m{font-size:13px;color:#667;margin-bottom:6px}.v{color:#e0245e;font-weight:600}.x{white-space:pre-wrap;word-break:break-word;font-size:15px}.x.c{display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}.tg{color:#1d9bf0;font-size:13px;cursor:pointer}.cp{background:#1d9bf0;color:#fff;border:0;border-radius:14px;padding:4px 14px;margin-right:12px}.g{color:#e0245e}#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 16px;border-radius:16px;display:none}
 a{color:#1d9bf0;font-size:14px}h3{margin:14px 4px 8px}.ft{text-align:center;color:#999;font-size:12px;padding:10px}
 </style></head><body><header><div class="tabs"><button id="t1" class="on">博主</button><button id="t2">24H热贴</button></div><div class="chips" id="chips"></div></header>
 <main id="main">加载中…</main><div class="ft" id="ft"></div><script>
@@ -19,6 +19,13 @@ t1.onclick=()=>{tab='c';draw()};t2.onclick=()=>{tab='d';draw()};
 function draw(){t1.className=tab=='c'?'on':'';t2.className=tab=='d'?'on':'';
 if(tab=='c'){chips.style.display='flex';chips.innerHTML=D.creators.map(c=>`<button data-u="${c.u}" class="${c.u==sel?'on':''}">${e(c.n)} (${c.posts.length})</button>`).join('');
 chips.querySelectorAll('button').forEach(b=>b.onclick=()=>{sel=b.dataset.u;draw();scrollTo(0,0)});
-const c=D.creators.find(c=>c.u==sel);main.innerHTML=`<h3>${e(c.n)} @${c.u}${c.f?' · 粉丝 '+f(c.f):''}</h3>`+(c.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ❤ ${f(p.l)} · ${p.t}</div><div class="x">${e(p.x)}</div><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')||'暂无')}
-else{chips.style.display='none';main.innerHTML=D.days.map(d=>`<h3>${d.d}（${d.posts.length} 条）</h3>`+d.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ${e(p.a)} · ${p.t}</div><div class="x">${e(p.x)}</div><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')).join('')}}
+const c=D.creators.find(c=>c.u==sel);main.innerHTML=`<h3>${e(c.n)} @${c.u}${c.f?' · 粉丝 '+f(c.f):''}</h3>`+(c.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ❤ ${f(p.l)} · ${p.t}${p.g?' <span class="g">⚠ 原帖已删/封号</span>':''}</div>${X(p.x)}<button class="cp">复制</button><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')||'暂无')}
+else{chips.style.display='none';main.innerHTML=D.days.map(d=>`<h3>${d.d}（${d.posts.length} 条）</h3>`+d.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ${e(p.a)} · ${p.t}${p.g?' <span class="g">⚠ 原帖已删/封号</span>':''}</div>${X(p.x)}<button class="cp">复制</button><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')).join('')}}
+</script><div id="toast"></div><script>
+function X(t){t=t||'';const L=t.length>180||t.split('\n').length>8;return `<div class="x${L?' c':''}" data-t="${encodeURIComponent(t)}">${e(t)}</div>`+(L?'<div class="tg">展开全文 ▼</div>':'')}
+function T(m){const o=document.getElementById('toast');o.textContent=m;o.style.display='block';clearTimeout(T.h);T.h=setTimeout(()=>o.style.display='none',1500)}
+function C(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}).finally(()=>T('已复制全文（'+t.length+' 字）'))}
+document.addEventListener('click',ev=>{const c=ev.target.closest('.card');if(!c)return;const x=c.querySelector('.x');
+if(ev.target.classList.contains('cp'))C(decodeURIComponent(x.dataset.t));
+else if(ev.target.classList.contains('tg')||ev.target===x){const g=c.querySelector('.tg');if(!g)return;x.classList.toggle('c');g.textContent=x.classList.contains('c')?'展开全文 ▼':'收起 ▲'}});
 </script></body></html>

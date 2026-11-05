@@ -2,3 +2,4 @@ android/**/build/
 android/.gradle/
 *.apk
 local.properties
+android/release.keystore

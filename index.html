@@ -2,6 +2,13 @@
 <title>X 热帖</title><style>
 body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f6f8;color:#222}
 header{position:sticky;top:0;background:#fff;z-index:2;box-shadow:0 1px 4px #0001}
+.top{display:flex;align-items:center;padding:10px 12px 4px}
+.top h1{flex:1;margin:0;font-size:20px}
+.top button.icon{border:0;background:none;font-size:20px;padding:6px 8px;cursor:pointer;line-height:1}
+#searchBar{display:none;padding:4px 12px 10px;gap:8px;align-items:center}
+#searchBar.on{display:flex}
+#q{flex:1;border:0;background:#f1f3f4;border-radius:8px;padding:10px 12px;font-size:15px}
+#qCancel{border:0;background:none;color:#1d9bf0;font-size:14px;cursor:pointer;padding:8px 4px}
 .tabs{display:flex}.tabs button{flex:1;padding:14px;border:0;background:none;font-size:17px;border-bottom:3px solid transparent}
 .tabs button.on{border-color:#1d9bf0;color:#1d9bf0;font-weight:600}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:8px 10px;white-space:nowrap}
@@ -10,19 +17,60 @@ header{position:sticky;top:0;background:#fff;z-index:2;box-shadow:0 1px 4px #000
 main{padding:10px;max-width:760px;margin:auto}.card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px}
 .m{font-size:13px;color:#667;margin-bottom:6px}.v{color:#e0245e;font-weight:600}.x{white-space:pre-wrap;word-break:break-word;font-size:15px}.x.c{display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}.tg{color:#1d9bf0;font-size:13px;cursor:pointer}.cp{background:#1d9bf0;color:#fff;border:0;border-radius:14px;padding:4px 14px;margin-right:12px}.g{color:#e0245e}#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#000c;color:#fff;padding:8px 16px;border-radius:16px;display:none}
 a{color:#1d9bf0;font-size:14px}h3{margin:14px 4px 8px}.ft{text-align:center;color:#999;font-size:12px;padding:10px}
-</style></head><body><header><div class="tabs"><button id="t1" class="on">博主</button><button id="t2">24H热贴</button></div><div class="chips" id="chips"></div></header>
-<main id="main">加载中…</main><div class="ft" id="ft"></div><script>
-const f=n=>n>=1e4?(n/1e4).toFixed(1)+'万':n;const e=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-let D,tab='c',sel=null;
+mark{background:#ffeb3b;padding:0}.empty{color:#888;padding:20px;text-align:center}
+</style></head><body>
+<header>
+<div class="top"><h1>X热帖</h1><button class="icon" id="btnSearch" title="搜索" aria-label="搜索">🔍</button></div>
+<div id="searchBar"><input id="q" type="search" placeholder="搜索已采集的推文关键字" enterkeyhint="search"><button id="qCancel">取消</button></div>
+<div class="tabs" id="tabBar"><button id="t1" class="on">博主</button><button id="t2">24H热贴</button></div>
+<div class="chips" id="chips"></div>
+</header>
+<main id="main">加载中…</main><div class="ft" id="ft"></div><div id="toast"></div>
+<script>
+const f=n=>n>=1e4?(n/1e4).toFixed(1)+'万':n;
+const e=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const hl=(t,q)=>{if(!q)return e(t);const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');return e(t).replace(re,m=>'<mark>'+m+'</mark>')};
+let D,tab='c',sel=null,query='';
 fetch('data.json?'+Date.now()).then(r=>r.json()).then(d=>{D=d;sel=d.creators[0]&&d.creators[0].u;ft.textContent='数据更新于 '+d.built+'（北京时间）';draw()});
-t1.onclick=()=>{tab='c';draw()};t2.onclick=()=>{tab='d';draw()};
-function draw(){t1.className=tab=='c'?'on':'';t2.className=tab=='d'?'on':'';
-if(tab=='c'){chips.style.display='flex';chips.innerHTML=D.creators.map(c=>`<button data-u="${c.u}" class="${c.u==sel?'on':''}">${e(c.n)} (${c.posts.length})</button>`).join('');
-chips.querySelectorAll('button').forEach(b=>b.onclick=()=>{sel=b.dataset.u;draw();scrollTo(0,0)});
-const c=D.creators.find(c=>c.u==sel);main.innerHTML=`<h3>${e(c.n)} @${c.u}${c.f?' · 粉丝 '+f(c.f):''}</h3>`+(c.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ❤ ${f(p.l)} · ${p.t}${p.g?' <span class="g">⚠ 原帖已删/封号</span>':''}</div>${X(p.x)}<button class="cp">复制</button><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')||'暂无')}
-else{chips.style.display='none';main.innerHTML=D.days.map(d=>`<h3>${d.d}（${d.posts.length} 条）</h3>`+d.posts.map(p=>`<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span> · ${e(p.a)} · ${p.t}${p.g?' <span class="g">⚠ 原帖已删/封号</span>':''}</div>${X(p.x)}<button class="cp">复制</button><a href="${p.u}" target="_blank">打开原帖</a></div>`).join('')).join('')}}
-</script><div id="toast"></div><script>
-function X(t){t=t||'';const L=t.length>180||t.split('\n').length>8;return `<div class="x${L?' c':''}" data-t="${encodeURIComponent(t)}">${e(t)}</div>`+(L?'<div class="tg">展开全文 ▼</div>':'')}
+t1.onclick=()=>{if(query)return;tab='c';draw()};t2.onclick=()=>{if(query)return;tab='d';draw()};
+btnSearch.onclick=()=>{searchBar.classList.add('on');q.focus()};
+qCancel.onclick=()=>{q.value='';query='';searchBar.classList.remove('on');draw()};
+q.addEventListener('input',()=>{query=(q.value||'').trim();draw();if(query)scrollTo(0,0)});
+function card(p,extra){return `<div class="card"><div class="m"><span class="v">👁 ${f(p.v)}</span>${extra||''} · ${p.t}${p.g?' <span class="g">⚠ 原帖已删/封号</span>':''}</div>${X(p.x,query)}<button class="cp">复制</button><a href="${p.u}" target="_blank">打开原帖</a></div>`}
+function searchAll(q){
+  const k=q.toLowerCase(),seen=new Set(),hits=[];
+  (D.creators||[]).forEach(c=>{
+    (c.posts||[]).forEach(p=>{
+      const blob=((p.x||'')+' '+c.n+' '+c.u+' @'+c.u).toLowerCase();
+      if(!blob.includes(k)||seen.has(p.u))return;seen.add(p.u);
+      hits.push({...p,_meta:` · ❤ ${f(p.l)} · ${e(c.n)} @${c.u}`,_k:p.k||p.t||''});
+    });
+  });
+  (D.days||[]).forEach(d=>{(d.posts||[]).forEach(p=>{
+    const blob=((p.x||'')+' '+(p.a||'')).toLowerCase();
+    if(!blob.includes(k)||seen.has(p.u))return;seen.add(p.u);
+    hits.push({...p,_meta:` · ${e(p.a)} · 24H`,_k:p.k||p.t||''});
+  })});
+  hits.sort((a,b)=>(b._k||'').localeCompare(a._k||''));
+  return hits;
+}
+function draw(){
+  const searching=!!query;
+  tabBar.style.display=searching?'none':'flex';
+  t1.className=tab=='c'?'on':'';t2.className=tab=='d'?'on':'';
+  if(searching){
+    chips.style.display='none';
+    const hits=searchAll(query);
+    main.innerHTML=`<h3>搜索「${e(query)}」· 共 ${hits.length} 条（博主+24H）</h3>`+(hits.length?hits.map(p=>card(p,p._meta)).join(''):'<div class="empty">没有搜到包含该关键字的推文</div>');
+    return;
+  }
+  if(tab=='c'){chips.style.display='flex';chips.innerHTML=D.creators.map(c=>`<button data-u="${c.u}" class="${c.u==sel?'on':''}">${e(c.n)} (${c.posts.length})</button>`).join('');
+  chips.querySelectorAll('button').forEach(b=>b.onclick=()=>{sel=b.dataset.u;draw();scrollTo(0,0)});
+  const c=D.creators.find(c=>c.u==sel);main.innerHTML=`<h3>${e(c.n)} @${c.u}${c.f?' · 粉丝 '+f(c.f):''}</h3>`+(c.posts.map(p=>card(p,` · ❤ ${f(p.l)}`)).join('')||'暂无')}
+  else{chips.style.display='none';main.innerHTML=D.days.map(d=>`<h3>${d.d}（${d.posts.length} 条）</h3>`+d.posts.map(p=>card(p,` · ${e(p.a)}`)).join('')).join('')}}
+</script>
+<script>
+function X(t,q){t=t||'';const L=t.length>180||t.split('\n').length>8;return `<div class="x${L?' c':''}" data-t="${encodeURIComponent(t)}">${hl(t,q||'')}</div>`+(L?'<div class="tg">展开全文 ▼</div>':'')}
 function T(m){const o=document.getElementById('toast');o.textContent=m;o.style.display='block';clearTimeout(T.h);T.h=setTimeout(()=>o.style.display='none',1500)}
 function C(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove()}).finally(()=>T('已复制全文（'+t.length+' 字）'))}
 document.addEventListener('click',ev=>{const c=ev.target.closest('.card');if(!c)return;const x=c.querySelector('.x');

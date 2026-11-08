@@ -1,0 +1,417 @@
+{
+ "run_started": "2026-10-24T12:14:22.632381+00:00",
+ "calls": [
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/00_users_0.json",
+   "namespace": "x",
+   "toolName": "get_users_by_usernames",
+   "paginate": false,
+   "arguments": {
+    "usernames": "wmtbxsh,woaierjie,Resfeber0,ciiikick,shaojiull,fadai202202,AirdropAlchemis,r0x_ht,_miuj_9,HtO0ha,Songzjiu,lizisu2000,luer0416,SUZUdesu111,Nameiccc,nvjishi,roten_rhonda,diaoke,mazziniunsaya,icecake999,Warmkiss33,ChunQingXiaoQ,mimimimibushuo,gebaobao520,qijiangbb_,Mantou_naive,ratshelprats,MissMafiana",
+    "user.fields": "id,name,username,public_metrics"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/01_daily_wmtbxsh.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1223407990713114624",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/02_daily_woaierjie.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1676602451569307649",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/03_daily_resfeber0.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1947628495896477696",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/04_daily_ciiikick.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1534571629061492736",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/05_daily_shaojiull.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1501915925578420228",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/06_daily_fadai202202.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1581937806435573760",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/07_daily_airdropalchemis.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1484231561784737792",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/08_daily_r0x_ht.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1910749531161190400",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/09_daily__miuj_9.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1987562596372021248",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/10_daily_hto0ha.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1956859353971171328",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/11_daily_songzjiu.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1183028604248027137",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/12_daily_lizisu2000.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1040062430171344897",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/13_daily_luer0416.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1833171457758859264",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/14_daily_suzudesu111.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1592433377143328768",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/15_daily_nameiccc.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1749798935357767680",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/16_daily_nvjishi.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1305718816413020160",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/17_daily_roten_rhonda.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1350225433388851200",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/18_daily_diaoke.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "2265468781",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/19_daily_mazziniunsaya.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "42308076",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/20_daily_icecake999.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1900688917902282752",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/21_daily_warmkiss33.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "2028045241388068864",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/22_daily_chunqingxiaoq.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1824731467815010305",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/23_daily_mimimimibushuo.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1512569460380647429",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/24_daily_gebaobao520.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1978991065219895297",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/25_daily_qijiangbb_.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1916146340901572608",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/26_daily_mantou_naive.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "753095033537126401",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/27_daily_ratshelprats.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1782932905419046912",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/28_daily_missmafiana.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1550583309708808193",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-23T12:14:22Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261024_2014/90_ids_0.json",
+   "namespace": "x",
+   "toolName": "get_posts_by_ids",
+   "paginate": false,
+   "arguments": {
+    "ids": "2113621009458753976,2113601338286469472,2113600375836332052,2113596503851962519,2113593989689651556,2113587400031248619,2113585498287673748,2113574719484268849,2113574535702425815,2113572955255087440,2113564820935237762,2113563830865600990,2113560050518364373,2113559000197513725,2113553256400187420,2113552670804033662,2113548668603338777,2113542879784382626,2113542181080416701,2113539183784710504,2113534883528421858,2113534034613817356,2113532514489016725,2113529543902568895,2113527783158898995,2113524179895263593,2113520844664426982,2113519272878338060,2113516675945639962,2113515266898567644,2113510296665075827,2113506135152230436,2113505307389538574,2113503415037001932,2113500090929201399,2113500029235474466,2113492768920310151,2113480008379535867,2113479375891161342,2113475175274705175,2113474941387784350,2113470763680645323,2113468564724408556,2113468427985940893,2113467992252305620,2113467400628883575,2113465205929963684,2113463714523586659,2113460755177845054,2113458691764809778,2113454515177529671,2113449255956557940,2113439018369347843,2113433806401401111,2113430007297315249,2113428958100550138,2113356385971040366,2113331150689309049,2113330707301028102,2113322217983656214,2113320195809055139,2113320040288395600,2113313887458308333,2113307849413771358,2113306948359921685,2113287700015182025,2113283732056731868,2113282582834188441,2113282477523452375,2113281895551336518,2113278221592723888,2113277953094328697,2113269979382776271,2113269204300488851,2113268466514092459,2113268014271603016",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  }
+ ]
+}

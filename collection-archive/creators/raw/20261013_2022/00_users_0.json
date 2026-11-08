@@ -1,0 +1,6 @@
+<cursor_untrusted_data_1337 source="CallDynamicTool">
+
+{"errors":[{"detail":"User has been suspended: [roten_rhonda].","parameter":"usernames","resource_id":"roten_rhonda","resource_type":"user","title":"Forbidden","type":"https://api.x.com/2/problems/resource-not-found","value":"roten_rhonda"}]}
+X reads left for this user: 29 of 30 this minute (resets at 2026-10-13T12:24:00.000Z), 898 of 1000 today (resets at 2026-10-14T00:00:00.000Z).
+
+</cursor_untrusted_data_1337>

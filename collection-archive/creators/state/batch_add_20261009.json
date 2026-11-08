@@ -1,0 +1,159 @@
+{
+ "woaierjie": {
+  "status": "done",
+  "name": "住在二姐家",
+  "id": "1676602451569307649",
+  "tweets": 308,
+  "history": 7,
+  "path": "/workspace/x-creators/reports/住在二姐家_20261009_1633.md",
+  "caption": "住在二姐家 已加入监控，历史热帖 7 条（16:33 采集）"
+ },
+ "resfeber0": {
+  "status": "done",
+  "name": "Utopia",
+  "id": "1947628495896477696",
+  "tweets": 1985,
+  "history": 6,
+  "path": "/workspace/x-creators/reports/Utopia_20261009_1733.md",
+  "caption": "Utopia 历史热帖补采完成，共 6 条（+1）（17:33 采集）"
+ },
+ "ciiikick": {
+  "status": "done",
+  "name": "CiiiCiii",
+  "id": "1534571629061492736",
+  "tweets": 2453,
+  "history": 9,
+  "path": "/workspace/x-creators/reports/CiiiCiii_20261009_1635.md",
+  "caption": "CiiiCiii 已加入监控，历史热帖 9 条（16:35 采集）"
+ },
+ "shaojiull": {
+  "status": "done",
+  "name": "mio",
+  "id": "1501915925578420228",
+  "tweets": 1028,
+  "history": 39,
+  "path": "/workspace/x-creators/reports/mio_20261009_1733.md",
+  "caption": "mio 历史热帖补采完成，共 39 条（+31）（17:33 采集）"
+ },
+ "fadai202202": {
+  "status": "done",
+  "name": "呆呆",
+  "id": "1581937806435573760",
+  "tweets": 3302,
+  "history": 191,
+  "path": "/workspace/x-creators/reports/呆呆_20261009_1757.md",
+  "caption": "呆呆 历史热帖补采完成，共 191 条（+36）（17:57 采集）"
+ },
+ "airdropalchemis": {
+  "status": "done",
+  "name": "炼金叔叔",
+  "id": "1484231561784737792",
+  "tweets": 69426,
+  "history": 150,
+  "path": "/workspace/x-creators/reports/炼金叔叔_20261009_1814.md",
+  "caption": "炼金叔叔 历史热帖补采完成，共 150 条（+42）（18:14 采集）"
+ },
+ "r0x_ht": {
+  "status": "done",
+  "name": "Miko",
+  "id": "1910749531161190400",
+  "tweets": 922,
+  "history": 105,
+  "path": "/workspace/x-creators/reports/Miko_20261009_1636.md",
+  "caption": "Miko 已加入监控，历史热帖 105 条（16:36 采集）"
+ },
+ "_miuj_9": {
+  "status": "done",
+  "name": "波奇塔Pochii",
+  "id": "1987562596372021248",
+  "tweets": 4600,
+  "history": 54,
+  "path": "/workspace/x-creators/reports/波奇塔Pochii_20261009_1745.md",
+  "caption": "波奇塔Pochii 历史热帖补采完成，共 54 条（+30）（17:45 采集）"
+ },
+ "hto0ha": {
+  "status": "done",
+  "name": "小松可可奈",
+  "id": "1956859353971171328",
+  "tweets": 211,
+  "history": 1,
+  "path": "/workspace/x-creators/reports/小松可可奈_20261009_1634.md",
+  "caption": "小松可可奈 已加入监控，历史热帖 1 条（16:34 采集）"
+ },
+ "songzjiu": {
+  "status": "done",
+  "name": "松子酒（接交友投稿）",
+  "id": "1183028604248027137",
+  "tweets": 1408,
+  "history": 236,
+  "path": "/workspace/x-creators/reports/松子酒（接交友投稿）_20261009_1740.md",
+  "caption": "松子酒（接交友投稿） 历史热帖补采完成，共 236 条（+17）（17:40 采集）"
+ },
+ "lizisu2000": {
+  "status": "done",
+  "name": "栗子酥",
+  "id": "1040062430171344897",
+  "tweets": 1870,
+  "history": 50,
+  "path": "/workspace/x-creators/reports/栗子酥_20261009_1739.md",
+  "caption": "栗子酥 历史热帖补采完成，共 50 条（+46）（17:39 采集）"
+ },
+ "_summary": {
+  "finished_at": "2026-10-09T16:38+08:00",
+  "reads_left": 863,
+  "all_11_added": true,
+  "complete_history": [
+   "woaierjie",
+   "hto0ha",
+   "ciiikick",
+   "r0x_ht"
+  ],
+  "partial_history": [
+   "resfeber0",
+   "shaojiull",
+   "fadai202202",
+   "airdropalchemis",
+   "_miuj_9",
+   "songzjiu",
+   "lizisu2000"
+  ],
+  "failures": [],
+  "note": "partial = 183天窗口未翻完，next_token 在 state/batch_tokens_20261009.json，可后续补采"
+ },
+ "luer0416": {
+  "status": "done",
+  "name": "鹿冉冉",
+  "id": "1833171457758859264",
+  "tweets": 108,
+  "history": 1,
+  "path": "/workspace/x-creators/reports/鹿冉冉_20261009_1641.md",
+  "caption": "鹿冉冉 已加入监控，历史热帖 1 条（16:41 采集）"
+ },
+ "suzudesu111": {
+  "status": "done",
+  "name": "suzu",
+  "id": "1592433377143328768",
+  "tweets": 33125,
+  "history": 71,
+  "path": "/workspace/x-creators/reports/suzu_20261009_1734.md",
+  "caption": "suzu 历史热帖补采完成，共 71 条（+26）（17:34 采集）"
+ },
+ "nameiccc": {
+  "status": "done",
+  "name": "海克斯科技",
+  "id": "1749798935357767680",
+  "tweets": 980,
+  "history": 36,
+  "path": "/workspace/x-creators/reports/海克斯科技_20261009_1734.md",
+  "caption": "海克斯科技 历史热帖补采完成，共 36 条（+25）（17:34 采集）"
+ },
+ "nvjishi": {
+  "status": "done",
+  "name": "女技师",
+  "id": "1305718816413020160",
+  "tweets": 24339,
+  "history": 122,
+  "path": "/workspace/x-creators/reports/女技师_20261009_1818.md",
+  "caption": "女技师 历史热帖补采完成，共 122 条（+66）（18:18 采集）"
+ }
+}

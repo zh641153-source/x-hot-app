@@ -1,0 +1,1 @@
+Search fully paged: account creation 2024-09-05T17:06:28Z to 2025-09-01T00:00:00Z; 2025-09-01T00:00:00Z to 2026-11-07T15:34:00Z. Both reached zero/no token. Timeline exhausted 20 pages. Earliest returned original 2024-09-10T13:00:55Z. 486 unique collected; 4 qualifying hot. No claim about deleted/private/unindexed posts. Commit a65ccda; remaining reads 873.

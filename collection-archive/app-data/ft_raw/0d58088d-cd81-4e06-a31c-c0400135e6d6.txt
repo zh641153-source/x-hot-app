@@ -1,0 +1,8 @@
+<cursor_untrusted_data_1337 source="CallDynamicTool">
+
+{"data":[{"edit_history_post_ids":["2116937653673459928"],"id":"2116937653673459928","text":"我对大专及以下学历的精液有排斥反应 没法纳入","url":"https://x.com/i/status/2116937653673459928"}],"meta":{"result_count":1}}
+expansions attachments.media_keys, expansions referenced_tweets.id, expansions referenced_tweets.id.attachments.media_keys, media.fields type, media.fields url, media.fields variants, media.fields preview_image_url, media.fields duration_ms were added, so any video or image on the post, or on a post it quotes, comes back with its media URLs.
+post.fields article was added, so a post longer than 280 characters comes back with its full text in note_tweet, and an X Article with its title and body in article.
+X reads left for this user: 22 of 30 this minute (resets at 2026-11-03T11:16:00.000Z), 882 of 1000 today (resets at 2026-11-04T00:00:00.000Z).
+
+</cursor_untrusted_data_1337>

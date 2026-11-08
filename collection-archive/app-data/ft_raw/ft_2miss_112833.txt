@@ -1,0 +1,8 @@
+<cursor_untrusted_data_1337 source="CallDynamicTool">
+
+{"data":[{"author_id":"1223407990713114624","created_at":"2026-11-04T23:24:16.000Z","edit_history_post_ids":["2118122186091429968"],"id":"2118122186091429968","text":"感觉睡奸男生就很容易啊…因为白天男生睡着的时候也会晨勃，好想知道在男生睡着晨勃的时候给他口鸡巴或者女上会发生什么？我一直很想实践但是还没实践过🥵","url":"https://x.com/i/status/2118122186091429968"},{"attachments":{"media_keys":["3_2118008385337749504","3_2118008385320992769"]},"author_id":"1870818143071059968","created_at":"2026-11-05T00:00:02.000Z","edit_history_post_ids":["2118131186790723944"],"id":"2118131186790723944","text":"🐔🐔fucking ez https://t.co/SR3gKmIFT1","url":"https://x.com/i/status/2118131186790723944"}],"includes":{"media":[{"media_key":"3_2118008385337749504","type":"photo","url":"https://pbs.twimg.com/media/HWStZ59a8AA5pFg.jpg"},{"media_key":"3_2118008385320992769","type":"photo","url":"https://pbs.twimg.com/media/HWStZ55bQAEL2Sb.jpg"}]},"meta":{"result_count":2}}
+expansions attachments.media_keys, expansions referenced_tweets.id, expansions referenced_tweets.id.attachments.media_keys, media.fields type, media.fields url, media.fields variants, media.fields preview_image_url, media.fields duration_ms were added, so any video or image on the post, or on a post it quotes, comes back with its media URLs.
+post.fields article was added, so a post longer than 280 characters comes back with its full text in note_tweet, and an X Article with its title and body in article.
+X reads left for this user: 29 of 30 this minute (resets at 2026-11-06T03:29:00.000Z), 814 of 1000 today (resets at 2026-11-07T00:00:00.000Z).
+
+</cursor_untrusted_data_1337>

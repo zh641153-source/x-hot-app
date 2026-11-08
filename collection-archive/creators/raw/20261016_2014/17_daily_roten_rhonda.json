@@ -1,0 +1,1 @@
+{"errors":[{"detail":"User has been suspended: [1350225433388851200].","parameter":"id","resource_id":"1350225433388851200","resource_type":"user","title":"Forbidden","type":"https://api.x.com/2/problems/resource-not-found","value":"1350225433388851200"}]}

@@ -1,0 +1,6 @@
+<cursor_untrusted_data_1337 source="CallDynamicTool">
+
+{"errors":[{"detail":"User has been suspended: [1350225433388851200].","parameter":"id","resource_id":"1350225433388851200","resource_type":"user","title":"Forbidden","type":"https://api.x.com/2/problems/resource-not-found","value":"1350225433388851200"}]}
+X reads left for this user: 24 of 30 this minute (resets at 2026-10-13T12:26:00.000Z), 881 of 1000 today (resets at 2026-10-14T00:00:00.000Z).
+
+</cursor_untrusted_data_1337>

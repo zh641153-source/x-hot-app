@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTML 预览测试</title>
+<style>
+body{font-family:-apple-system,sans-serif;margin:0;padding:16px;background:#0f1419;color:#e7ecf3}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.tabs label{padding:8px 14px;border-radius:999px;background:#1a2332;border:1px solid #2f3b4a;cursor:pointer}
+input{position:absolute;opacity:0;pointer-events:none}
+.panel{display:none;padding:12px;background:#1a2332;border-radius:12px}
+#t1:checked ~ .tabs label[for=t1],
+#t2:checked ~ .tabs label[for=t2]{background:#1d9bf0;border-color:#1d9bf0}
+#t1:checked ~ #p1,#t2:checked ~ #p2{display:block}
+</style>
+</head>
+<body>
+<h1>如果能看到标题和按钮，说明 HTML 预览正常</h1>
+<input type="radio" name="t" id="t1" checked>
+<input type="radio" name="t" id="t2">
+<div class="tabs">
+<label for="t1">标签甲</label>
+<label for="t2">标签乙</label>
+</div>
+<div class="panel" id="p1">甲的内容：点标签应能切换。</div>
+<div class="panel" id="p2">乙的内容：这是第二个面板。</div>
+</body>
+</html>

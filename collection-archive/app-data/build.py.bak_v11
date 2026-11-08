@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Read-only export of x-creators + x-zh-24h into a static site (site/). No X calls."""
+import json, re, datetime as dt, pathlib
+C=pathlib.Path('/workspace/x-creators'); Z=pathlib.Path('/workspace/x-zh-24h'); OUT=pathlib.Path(__file__).parent/'site'
+BJ=dt.timezone(dt.timedelta(hours=8))
+hist=json.load(open(C/'state/history.json')); meta=json.load(open(C/'state/creators_meta.json'))
+cfg=json.load(open(C/'creators.json')); minv=cfg['settings'].get('history_min_views',100000)
+creators=[];hidden=[]
+FT=pathlib.Path(__file__).parent/'fulltext.json'; ft=json.load(open(FT)) if FT.exists() else {}
+GN=pathlib.Path(__file__).parent/'gone.json'; gone=set(json.load(open(GN))) if GN.exists() else set()
+for c in cfg['creators']:
+    u=c['username']; k=u.lower(); m=meta.get(u) or meta.get(k) or {}; posts=[]
+    for p in (hist.get(u) or hist.get(k) or []):
+        v=p.get('metrics',{}).get('impression_count',0)
+        if v<minv: continue
+        t=dt.datetime.fromisoformat(p['created_at'].replace('Z','+00:00')).astimezone(BJ)
+        posts.append({'id':p['id'],'t':t.strftime('%Y-%m-%d %H:%M'),'v':v,'l':p['metrics'].get('like_count',0),
+                      'x':ft.get(p['id']) or p.get('full_text') or p.get('text',''),'g':1 if p['id'] in gone else 0,'u':f"https://x.com/{u}/status/{p['id']}"})
+    posts.sort(key=lambda p:p['t'],reverse=True)
+    if not posts: hidden.append(u); continue
+    creators.append({'u':u,'n':m.get('name',u),'f':m.get('followers'),'posts':posts})
+days=[];cur=None
+for line in open(Z/'简中24h十万热帖.md',encoding='utf-8'):
+    h=re.match(r'##\s+(\S+)',line)
+    if h: cur={'d':h.group(1).split('（')[0],'posts':[]}; days.append(cur); continue
+    if cur and line.startswith('|') and re.match(r'\|\s*[\d,]+\s*\|',line):
+        cells=[s.strip() for s in line.strip().strip('|').split('|')]
+        url=re.search(r'\((https?://[^)]+)\)',cells[-1]); url=url.group(1) if url else ''
+        pid=url.rstrip('/').split('/')[-1] if url else ''
+        cur['posts'].append({'v':int(cells[0].replace(',','')),'a':cells[1],'t':cells[2],'x':ft.get(pid) or cells[3],'g':1 if pid in gone else 0,'u':url})
+data={'built':dt.datetime.now(BJ).strftime('%Y-%m-%d %H:%M'),'creators':creators,'days':days}
+OUT.mkdir(exist_ok=True)
+(OUT/'data.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
+(OUT/'.nojekyll').write_text('')
+print('hidden',hidden);print('creators',len(creators),'posts',sum(len(c['posts']) for c in creators),'days',len(days))

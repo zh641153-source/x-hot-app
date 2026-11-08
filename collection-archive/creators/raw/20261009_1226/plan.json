@@ -1,0 +1,29 @@
+{
+ "run_started": "2026-10-09T04:26:12.650340+00:00",
+ "calls": [
+  {
+   "save_as": "/workspace/x-creators/raw/20261009_1226/01_daily_wmtbxsh.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 3,
+   "arguments": {
+    "id": "1223407990713114624",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-10-08T04:26:12Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  },
+  {
+   "save_as": "/workspace/x-creators/raw/20261009_1226/90_ids_0.json",
+   "namespace": "x",
+   "toolName": "get_posts_by_ids",
+   "paginate": false,
+   "arguments": {
+    "ids": "2108326787906433093,2108324448155897961,2108268207975051452,2108267394963849668,2108180156942860627,2108168441148686691,2108166477090304272,2108144071181242665,2108143637767098808,2108125282867769385,2108112836685930547,2108112688174031083",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+{
+ "run_started": "2026-10-17T14:55:45.300843+00:00",
+ "calls": [
+  {
+   "save_as": "/workspace/x-creators/raw/20261017_2255/10_hist_p1_chunqingxiaoq.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 60,
+   "arguments": {
+    "id": "1824731467815010305",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-04-17T14:55:45Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  }
+ ]
+}

@@ -1,0 +1,53 @@
+{
+  "luer0416": {
+    "status": "done",
+    "name": "鹿冉冉",
+    "id": "1833171457758859264",
+    "tweets": 108,
+    "history": 1,
+    "path": "/workspace/x-creators/reports/鹿冉冉_20261009_1641.md",
+    "caption": "鹿冉冉 已加入监控，历史热帖 1 条（16:41 采集）"
+  },
+  "suzudesu111": {
+    "status": "partial",
+    "name": "suzu",
+    "id": "1592433377143328768",
+    "tweets": 33125,
+    "history": 45,
+    "path": "/workspace/x-creators/reports/suzu_20261009_1641.md",
+    "caption": "suzu 已加入监控，历史热帖 45 条（历史尚未翻完，可后续补采）（16:41 采集）"
+  },
+  "nameiccc": {
+    "status": "partial",
+    "name": "海克斯科技",
+    "id": "1749798935357767680",
+    "tweets": 980,
+    "history": 11,
+    "path": "/workspace/x-creators/reports/海克斯科技_20261009_1641.md",
+    "caption": "海克斯科技 已加入监控，历史热帖 11 条（历史尚未翻完，可后续补采）（16:41 采集）"
+  },
+  "nvjishi": {
+    "status": "partial",
+    "name": "女技师",
+    "id": "1305718816413020160",
+    "tweets": 24339,
+    "history": 11,
+    "path": "/workspace/x-creators/reports/女技师_20261009_1642.md",
+    "caption": "女技师 已加入监控，历史热帖 11 条（历史尚未翻完，可后续补采）（16:42 采集）"
+  },
+  "_summary": {
+    "finished_at": "2026-10-09T16:43+08:00",
+    "reads_left": 845,
+    "all_4_added": true,
+    "complete_history": [
+      "luer0416"
+    ],
+    "partial_history": [
+      "suzudesu111",
+      "nameiccc",
+      "nvjishi"
+    ],
+    "failures": [],
+    "note": "partial = 183天窗口未翻完，next_token 在 state/batch_tokens_20261009.json"
+  }
+}

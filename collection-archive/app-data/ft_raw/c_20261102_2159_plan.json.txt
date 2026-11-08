@@ -1,0 +1,19 @@
+{
+ "run_started": "2026-11-02T13:59:13.236955+00:00",
+ "calls": [
+  {
+   "save_as": "/workspace/x-creators/raw/20261102_2159/10_hist_p1_odelia21360.json",
+   "namespace": "x",
+   "toolName": "get_users_posts",
+   "paginate": true,
+   "max_pages": 60,
+   "arguments": {
+    "id": "<从 00_users 结果取 id>",
+    "max_results": 25,
+    "exclude": "retweets,replies",
+    "start_time": "2026-05-03T13:59:13Z",
+    "post.fields": "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+   }
+  }
+ ]
+}

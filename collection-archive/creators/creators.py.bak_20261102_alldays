@@ -1,0 +1,907 @@
+#!/usr/bin/env python3
+"""X 博主历史爆款采集（官方 X connector 版）。
+
+只追踪历史热帖（爆款）：满 24h 且浏览量 ≥history_min_views（默认 10 万）才入榜；
+history.json 只追加不改。例行扫描仍会拉近 24h 推文并刷新待毕业帖的浏览量（供毕业判定），
+但不再把「今日/最新推文」当作推送内容——只有本轮有帖新进入历史热帖时才 PUSH 报告。
+
+子命令：
+  plan                                 每小时一轮：生成本轮 connector 调用（JSON 行）并建 RUN_DIR（含 plan.json 记录开始时间）
+  plan --history HANDLE --pages N      历史回溯用的时间线翻页调用
+  ingest RUN_DIR                       解析 RUN_DIR 里保存的响应，更新 state/posts.json、state/creators_meta.json
+  finalize RUN_DIR [--force]           毕业判定（满 24h 且 ≥history_min_views 的追加进 state/history.json，只追加不改）
+                                       → 仅当本轮有帖新进入历史热帖时出报告并 PUSH；否则 NO_UPDATES
+                                       （不再因「有新推文」推送）；--force 强制出报告
+  report HANDLE                        手动出某博主的历史热帖报告（不判定毕业）
+  seed-history                         一次性迁移：把已满 24h、≥阈值的旧数据写入 history.json
+  dashboard                            生成 reports/历史热帖总览.html（横向 CSS radio 标签页，无 JS）；另写 reports/博主热帖/<昵称>.md（一人一文件）与 reports/历史热帖总览_索引.md
+  报告文件：reports/<昵称>_YYYYMMDD_HHMM.md（昵称去掉 emoji 和非法字符；为空时用 handle）；同一博主的旧报告移到 reports/archive/
+                                       另：reports/历史热帖总览.html、reports/博主热帖/、历史热帖总览_索引.md 由 finalize / report / seed-history / dashboard 覆盖更新
+  status                               打印每个博主的覆盖情况
+
+响应文件格式（RUN_DIR 下，按文件名排序读取）：
+  *.json  connector 原样返回（可带末尾的 "X reads left ..." 一行）
+  *.tsv   精简格式：P\tid\tcreated_at\timpressions\tlike\tretweet\treply\tquote\tbookmark\tkind(o/q/r)\ttext
+          C\tresult_count\toldest_id\toldest_created_at\tnext_token ；M ... ；Q\treads_left ；# 注释
+  文件名里带 "_<handle>" 或首行注释 "# handle=xxx" 时据此归属；否则用 author_id 匹配 creators.json。
+所有时间显示为北京时间（Asia/Shanghai）。
+"""
+import json, os, re, sys, glob, html, datetime as dt
+from zoneinfo import ZoneInfo
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+STATE = os.path.join(BASE, "state")
+RAW = os.path.join(BASE, "raw")
+REPORTS = os.path.join(BASE, "reports")
+BJ = ZoneInfo("Asia/Shanghai")
+UTC = dt.timezone.utc
+POST_FIELDS = "created_at,public_metrics,referenced_tweets,in_reply_to_user_id,lang"
+
+
+def now_utc():
+    return dt.datetime.now(UTC)
+
+
+def parse_ts(s):
+    return dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+
+def bj(t):
+    return t.astimezone(BJ)
+
+
+def load(path, default):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return default
+
+
+def save(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
+
+
+def cfg():
+    return load(os.path.join(BASE, "creators.json"), {"settings": {}, "creators": []})
+
+
+def settings():
+    s = {"history_days": 183, "history_min_views": 100000, "daily_window_hours": 24,
+         "daily_min_views": 30000, "include_replies": False, "seen_keep_days": 30,
+         "daily_max_pages_per_creator": 3, "history_max_rows": 0}
+    s.update(cfg().get("settings", {}))
+    return s
+
+
+def fmt_num(n):
+    n = int(n)
+    if n >= 10000:
+        return f"{n/10000:.1f}万"
+    return f"{n:,}"
+
+
+def fmt_thr(n):
+    n = int(n)
+    return f"{n//10000} 万" if n >= 10000 and n % 10000 == 0 else fmt_num(n)
+
+
+def summary(text, n=40):
+    t = re.sub(r"https?://t\.co/\S+", "", text or "")
+    t = t.replace("\\n", " ")
+    t = re.sub(r"\s+", " ", t).strip()
+    if len(t) > n:
+        t = t[:n] + "…"
+    t = t.replace("|", "｜")
+    return t or "（图片/视频）"
+
+
+# ---------------- ingest ----------------
+
+def _first_json(text):
+    i = text.find("{")
+    if i < 0:
+        return None
+    try:
+        obj, _ = json.JSONDecoder().raw_decode(text[i:])
+        return obj
+    except Exception:
+        return None
+
+
+def _kind(p):
+    refs = p.get("referenced_tweets") or []
+    types = {r.get("type") for r in refs}
+    if "retweeted" in types:
+        return "rt"
+    if "replied_to" in types or p.get("in_reply_to_user_id"):
+        return "r"
+    if "quoted" in types:
+        return "q"
+    return "o"
+
+
+def parse_file(path):
+    """返回 (posts, users, meta)。posts: list of dict(id, author_id?, created_at, m{...}, kind, text)"""
+    txt = open(path, encoding="utf-8").read()
+    posts, users, meta = [], [], {}
+    m = re.search(r"(\d+) of 1000 today", txt)
+    if m:
+        meta["reads_left"] = int(m.group(1))
+    hm = re.search(r"#\s*handle=(\w+)", txt)
+    if hm:
+        meta["handle"] = hm.group(1)
+    if path.endswith(".tsv"):
+        for line in txt.splitlines():
+            if not line or line.startswith("#"):
+                continue
+            f = line.split("\t")
+            if f[0] == "P" and len(f) >= 10:
+                posts.append({"id": f[1], "created_at": f[2],
+                              "m": {"impression_count": int(f[3]), "like_count": int(f[4]),
+                                    "retweet_count": int(f[5]), "reply_count": int(f[6]),
+                                    "quote_count": int(f[7]), "bookmark_count": int(f[8])},
+                              "kind": f[9], "text": f[10] if len(f) > 10 else ""})
+            elif f[0] in ("C", "M"):
+                meta["result_count"] = int(f[1])
+                meta["oldest_id"] = f[2]
+                if f[0] == "C" and len(f) > 3:
+                    meta["oldest_created_at"] = f[3]
+                    meta["next_token"] = f[4] if len(f) > 4 else ""
+                elif len(f) > 3:
+                    meta["next_token"] = f[3]
+            elif f[0] == "Q":
+                meta["reads_left"] = int(f[1])
+            elif f[0] == "G":
+                meta.setdefault("gone_ids", []).append(f[1])
+        return posts, users, meta
+    obj = _first_json(txt)
+    if not obj:
+        meta["error"] = txt[:300]
+        return posts, users, meta
+    if "errors" in obj and "data" not in obj:
+        meta["error"] = json.dumps(obj["errors"], ensure_ascii=False)[:300]
+    data = obj.get("data")
+    if isinstance(data, dict) and "username" in data:
+        users.append(data)
+    elif isinstance(data, list):
+        for p in data:
+            if "username" in p:
+                users.append(p)
+                continue
+            m = dict(p.get("public_metrics", {}))
+            if "repost_count" in m and "retweet_count" not in m:  # get_posts_by_ids 用 repost_count
+                m["retweet_count"] = m["repost_count"]
+            posts.append({"id": p["id"], "author_id": p.get("author_id"), "created_at": p.get("created_at"),
+                          "m": m, "kind": _kind(p), "text": (p.get("note_tweet") or {}).get("text") or p.get("text", "")})
+    for e in obj.get("errors") or []:
+        rid = e.get("resource_id") or e.get("value")
+        if rid and str(e.get("resource_type", "tweet")) in ("tweet", "post") and "not" in json.dumps(e).lower():
+            meta.setdefault("gone_ids", []).append(str(rid))
+    meta.update({k: v for k, v in (obj.get("meta") or {}).items()})
+    return posts, users, meta
+
+
+def ingest(run_dir):
+    c = cfg()
+    by_id = {x.get("id"): x["username"].lower() for x in c["creators"] if x.get("id")}
+    posts_db = load(os.path.join(STATE, "posts.json"), {})
+    cmeta = load(os.path.join(STATE, "creators_meta.json"), {})
+    run_id = os.path.basename(os.path.normpath(run_dir))
+    files = sorted(f for f in glob.glob(os.path.join(run_dir, "*.json")) + glob.glob(os.path.join(run_dir, "*.tsv"))
+                   if os.path.basename(f) != "plan.json")
+    n_new = n_upd = 0
+    reads_left = None
+    for fp in files:
+        fetched = dt.datetime.fromtimestamp(os.path.getmtime(fp), UTC).isoformat()
+        posts, users, meta = parse_file(fp)
+        if "reads_left" in meta:
+            # 文件按名排序≠按时间；同一天内额度单调递减，取最小值
+            reads_left = meta["reads_left"] if reads_left is None else min(reads_left, meta["reads_left"])
+        if meta.get("error"):
+            print(f"WARN {os.path.basename(fp)}: {meta['error']}", file=sys.stderr)
+        for u in users:
+            h = u["username"].lower()
+            pm = u.get("public_metrics", {})
+            cmeta.setdefault(h, {}).update({"id": u["id"], "name": u.get("name"), "username": u["username"],
+                                            "followers": pm.get("followers_count"),
+                                            "tweet_count": pm.get("tweet_count"), "user_fetched_at": fetched})
+            by_id[u["id"]] = h
+            for x in c["creators"]:
+                if x["username"].lower() == h and not x.get("id"):
+                    x["id"] = u["id"]
+        fname_handle = None
+        mh = re.search(
+            r"(?:hist|daily)_p\d+_@?([A-Za-z0-9_]+)\.(?:json|tsv)$",
+            os.path.basename(fp),
+        ) or re.search(
+            r"search_s\d+_@?([A-Za-z0-9_]+)\.(?:json|tsv)$",
+            os.path.basename(fp),
+        ) or re.search(
+            r"_@?([A-Za-z0-9_]+)(?:_p\d+)?\.(json|tsv)$",
+            os.path.basename(fp),
+        )
+        if meta.get("handle"):
+            fname_handle = meta["handle"].lower()
+        elif mh and mh.group(1).lower() in {x["username"].lower() for x in c["creators"]}:
+            fname_handle = mh.group(1).lower()
+        for gid in meta.get("gone_ids", []):
+            if gid in posts_db:
+                posts_db[gid]["gone"] = True
+                posts_db[gid]["gone_at"] = fetched
+        for p in posts:
+            old = posts_db.get(p["id"])
+            h = (old or {}).get("handle") or by_id.get(p.get("author_id")) or fname_handle
+            if not h:
+                # 单博主 RUN_DIR：用唯一博主兜底
+                hs = {x["username"].lower() for x in c["creators"]}
+                h = next(iter(hs)) if len(hs) == 1 else None
+            if not h:
+                continue
+            rec = posts_db.get(p["id"])
+            if rec is None:
+                rec = {"id": p["id"], "handle": h, "created_at": p["created_at"], "kind": p["kind"],
+                       "text": p["text"], "first_fetched_at": fetched, "first_run": run_id}
+                posts_db[p["id"]] = rec
+                n_new += 1
+            else:
+                n_upd += 1
+                if p["text"] and len(p["text"]) > len(rec.get("text") or ""):
+                    rec["text"] = p["text"]
+            if not rec.get("metrics_at") or fetched >= rec["metrics_at"]:
+                rec["metrics"] = p["m"]
+                rec["metrics_at"] = fetched
+        # 记录分页覆盖（历史回溯到哪）
+        if (fname_handle or len(c["creators"]) == 1) and "daily" not in os.path.basename(fp):
+            h = fname_handle or c["creators"][0]["username"].lower()
+            oc = meta.get("oldest_created_at") or (min((p["created_at"] for p in posts), default=None))
+            if oc:
+                cm = cmeta.setdefault(h, {})
+                if not cm.get("oldest_fetched") or oc < cm["oldest_fetched"]:
+                    cm["oldest_fetched"] = oc
+                if "next_token" in meta:
+                    cm["history_next_token"] = meta.get("next_token") or ""
+                    # 没有 next_token 或不足一页 = 已翻到 start_time（或接口上限）
+                    if not meta.get("next_token") or int(meta.get("result_count", 25)) < 25:
+                        # 只有真的翻到了 6 个月起点才算完整；否则是接口到头（时间线只能翻约 3200 条），要改用 search_posts_all 补
+                        start = now_utc() - dt.timedelta(days=settings()["history_days"])
+                        if parse_ts(cm["oldest_fetched"]) <= start + dt.timedelta(days=2):
+                            cm["history_complete"] = True
+                        else:
+                            cm["timeline_exhausted_at"] = cm["oldest_fetched"]
+    save(os.path.join(STATE, "posts.json"), posts_db)
+    save(os.path.join(STATE, "creators_meta.json"), cmeta)
+    save(os.path.join(BASE, "creators.json"), c)
+    m = load(os.path.join(STATE, "meta.json"), {})
+    m["last_ingest"] = now_utc().isoformat()
+    if reads_left is not None:
+        m["reads_left"] = reads_left
+    save(os.path.join(STATE, "meta.json"), m)
+    print(f"SUMMARY files={len(files)} new_posts={n_new} updated={n_upd} reads_left={reads_left}", file=sys.stderr)
+
+
+# ---------------- reports ----------------
+
+def eligible(rec, s):
+    if rec.get("kind") == "rt":
+        return False
+    if rec.get("kind") == "r" and not s["include_replies"]:
+        return False
+    return True
+
+
+def strip_emoji(x):
+    import unicodedata
+    out = []
+    for ch in str(x or ""):
+        cat = unicodedata.category(ch)
+        cp = ord(ch)
+        # 去掉 emoji / 符号 / 变体选择符 / 零宽连接符等
+        if cat in ("So", "Sk", "Cs", "Co", "Cn", "Mn", "Me", "Cf") or 0x1F000 <= cp <= 0x1FAFF \
+                or 0x2600 <= cp <= 0x27BF or 0xFE00 <= cp <= 0xFE0F:
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
+def safe_name(x, n=40, fallback="noname"):
+    x = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "", str(x or ""))
+    x = re.sub(r"\s+", "_", x).strip("._ ")
+    return x[:n] or fallback
+
+
+HIST_PATH = os.path.join(STATE, "history.json")
+POST_URL = "https://x.com/{u}/status/{i}"
+
+
+def _age(r, now):
+    return now - parse_ts(r["created_at"])
+
+
+def _pending(r, s):
+    """原创/引用、还没毕业、没被删的帖子"""
+    return eligible(r, s) and not r.get("graduated")
+
+
+def _creator_handles():
+    return [x["username"].lower() for x in cfg()["creators"] if not x.get("disabled")]
+
+
+def _today_rows(h, posts, s, now):
+    win = dt.timedelta(hours=s["daily_window_hours"])
+    rows = [r for r in posts.values() if r["handle"] == h and eligible(r, s) and not r.get("gone")
+            and dt.timedelta(0) <= _age(r, now) < win]
+    rows.sort(key=lambda r: r["created_at"], reverse=True)
+    return rows
+
+
+def _hist_rows(h, s, now):
+    since = now - dt.timedelta(days=s["history_days"])
+    rows = [r for r in load(HIST_PATH, {}).get(h, []) if parse_ts(r["created_at"]) >= since]
+    rows.sort(key=lambda r: r["created_at"], reverse=True)
+    return rows, since
+
+
+def seed_history(now=None):
+    """一次性迁移：把 posts.json 里已满 24 小时、≥阈值的帖子写入 history.json（之后只追加）；其余已满 24 小时的标记为已处理。"""
+    s = settings()
+    now = now or now_utc()
+    posts = load(os.path.join(STATE, "posts.json"), {})
+    hist = load(HIST_PATH, {})
+    have = {r["id"] for v in hist.values() for r in v}
+    win = dt.timedelta(hours=s["daily_window_hours"])
+    n_add = n_skip = 0
+    for r in posts.values():
+        if r.get("graduated") or _age(r, now) < win:
+            continue
+        if eligible(r, s) and r["metrics"].get("impression_count", 0) >= s["history_min_views"]:
+            if r["id"] not in have:
+                hist.setdefault(r["handle"], []).append({
+                    "id": r["id"], "created_at": r["created_at"], "kind": r["kind"], "text": r["text"],
+                    "metrics": r["metrics"], "metrics_at": r["metrics_at"], "added_at": now.isoformat(),
+                    "source": "seed"})
+                n_add += 1
+            r["graduated"] = "history"
+        else:
+            r["graduated"] = "discarded" if eligible(r, s) else "n/a"
+            n_skip += 1
+    save(HIST_PATH, hist)
+    save(os.path.join(STATE, "posts.json"), posts)
+    print(f"seeded history: +{n_add}, marked {n_skip} others as done")
+    try:
+        build_dashboard(now)
+    except Exception as e:
+        print(f"WARN dashboard: {e}", file=sys.stderr)
+
+
+def graduate(run_started, now=None):
+    """满 24 小时后、本轮刷新过浏览量的帖子：≥阈值追加进 history.json（只追加，不改旧条目），否则丢弃。
+    返回 {handle: [新进历史的记录]}；本轮没刷新到的先不处理（下轮再试）。"""
+    s = settings()
+    now = now or now_utc()
+    posts = load(os.path.join(STATE, "posts.json"), {})
+    hist = load(HIST_PATH, {})
+    have = {r["id"] for v in hist.values() for r in v}
+    win = dt.timedelta(hours=s["daily_window_hours"])
+    out = {}
+    for r in posts.values():
+        if not _pending(r, s) or _age(r, now) < win:
+            continue
+        if r.get("gone"):
+            r["graduated"] = "gone"
+            continue
+        if parse_ts(r["metrics_at"]) < run_started:
+            continue  # 这轮没拿到最新数据，下轮再判
+        if r["metrics"].get("impression_count", 0) >= s["history_min_views"]:
+            if r["id"] not in have:
+                e = {"id": r["id"], "created_at": r["created_at"], "kind": r["kind"], "text": r["text"],
+                     "metrics": r["metrics"], "metrics_at": r["metrics_at"], "added_at": now.isoformat(),
+                     "source": "graduated"}
+                hist.setdefault(r["handle"], []).append(e)
+                out.setdefault(r["handle"], []).append(e)
+            r["graduated"] = "history"
+        else:
+            r["graduated"] = "discarded"
+        r["graduated_at"] = now.isoformat()
+    save(HIST_PATH, hist)
+    save(os.path.join(STATE, "posts.json"), posts)
+    return out
+
+
+def _archive_old(fn, keep_path):
+    arch = os.path.join(REPORTS, "archive")
+    pat = re.compile(re.escape(fn) + r"_\d{8}_\d{4}\.md$")
+    for f in os.listdir(REPORTS) if os.path.isdir(REPORTS) else []:
+        fp = os.path.join(REPORTS, f)
+        if pat.fullmatch(f) and os.path.abspath(fp) != os.path.abspath(keep_path):
+            os.makedirs(arch, exist_ok=True)
+            os.replace(fp, os.path.join(arch, f))
+
+
+def report_filename_base(h):
+    cm = load(os.path.join(STATE, "creators_meta.json"), {}).get(h, {})
+    return safe_name(strip_emoji(cm.get("name") or ""), fallback="") or safe_name(cm.get("username", h))
+
+
+def creator_report(handle, now=None, run_id=None, new_hist_ids=()):
+    """一个博主一个文件：只列历史热帖（只追加的 history.json）。旧报告移到 reports/archive/。
+    不再输出「今日/最新推文」区块；例行推送仅在有帖新入历史时触发。"""
+    s = settings()
+    h = handle.lower()
+    now = now or now_utc()
+    cm = load(os.path.join(STATE, "creators_meta.json"), {}).get(h, {})
+    user = cm.get("username", h)
+    name = cm.get("name") or h
+    t = bj(now)
+    hist, since = _hist_rows(h, s, now)
+    maxr = int(s.get("history_max_rows") or 0)
+    shown = hist[:maxr] if maxr else hist
+    hmin = s["history_min_views"]
+    n_new = len(new_hist_ids) if new_hist_ids else 0
+    fol = fmt_num(cm["followers"]) if cm.get("followers") is not None else "未知"
+    L = [f"# @{user}（{name}）· X 历史热帖报告",
+         f"采集时间：{t:%Y-%m-%d %H:%M}（北京时间） · 粉丝 {fol}",
+         "",
+         f"## 📚 历史热帖（近 6 个月 · 浏览 ≥{fmt_thr(hmin)} · 按发布时间由近到远）",
+         ""]
+    if n_new:
+        L.append(f"**本次新增入榜 {n_new} 条**（摘要前带 🆕）")
+        L.append("")
+    of = cm.get("oldest_fetched")
+    if not cm.get("history_complete") and (not of or parse_ts(of) > since + dt.timedelta(days=1)):
+        st = f"{bj(parse_ts(of)):%Y-%m-%d}" if of else "（未回溯）"
+        L += [f"> ⚠️ 覆盖不完整：目前只采到 {st} 至今，还没翻到 {bj(since):%Y-%m-%d}，更早的帖子待补采。", ""]
+    L += [f"共 {len(hist)} 条 · 按发布时间由近到远" + (f" · 下表只列最近 {len(shown)} 条" if len(shown) < len(hist) else ""), ""]
+    if not hist:
+        L.append("暂无")
+    else:
+        L.append("| # | 发布时间 | 浏览量 | 内容摘要 | 链接 |")
+        L.append("|---|---|---|---|---|")
+        for i, r in enumerate(shown, 1):
+            m = r["metrics"]
+            tag = "🆕 " if r["id"] in new_hist_ids else ""
+            L.append(f"| {i} | {bj(parse_ts(r['created_at'])):%Y-%m-%d %H:%M} | {fmt_num(m['impression_count'])} | "
+                     f"{tag}{summary(r['text'])} | [打开]({POST_URL.format(u=user, i=r['id'])}) |")
+    L += ["", "注：只统计原创帖和引用帖（不含转推、回复）。不显示点赞、转发。"
+              "历史热帖的浏览量是入榜时记录的数值（新入榜的为满 24 小时时的数值），之后不再改动；"
+              "点「打开」到 X 上看最新数字。例行扫描不再推送「最新/今日推文」，只在有帖新进入历史热帖时出报告。"]
+    os.makedirs(REPORTS, exist_ok=True)
+    fn = report_filename_base(h)
+    path = os.path.join(REPORTS, f"{fn}_{t:%Y%m%d_%H%M}.md")
+    open(path, "w", encoding="utf-8").write("\n".join(L) + "\n")
+    _archive_old(fn, path)
+    # 返回值保持 (path, today_count, new_today_count, hist_count)；今日相关恒为 0
+    return path, 0, n_new, len(hist)
+
+
+
+
+DASHBOARD_PATH = os.path.join(REPORTS, "历史热帖总览.html")
+DASHBOARD_MD_PATH = os.path.join(REPORTS, "历史热帖总览.md")  # legacy; no longer written as tabbed single file
+DASHBOARD_INDEX_MD = os.path.join(REPORTS, "历史热帖总览_索引.md")
+DASHBOARD_PER_DIR = os.path.join(REPORTS, "博主热帖")
+DASHBOARD_GUIDE_MD = os.path.join(REPORTS, "历史热帖总览_聊天导览.md")
+
+
+def _esc(s):
+    return html.escape(str(s or ""), quote=True)
+
+
+def build_dashboard(now=None):
+    """生成单页 HTML 总览（CSS radio 标签页，无 JS）+ 每人一份 MD（reports/博主热帖/<昵称>.md）
+    + 索引 MD（无假锚点标签）。稳定路径覆盖写。返回 HTML 路径。"""
+    s = settings()
+    now = now or now_utc()
+    t = bj(now)
+    cmeta = load(os.path.join(STATE, "creators_meta.json"), {})
+    creators = [x for x in cfg()["creators"] if not x.get("disabled")]
+    hmin = s["history_min_views"]
+    new_cut = now - dt.timedelta(hours=36)
+    total_posts = 0
+    radios = []
+    labels = []
+    panels = []
+    show_rules = []
+    active_rules = []
+    index_bullets = []
+    per_written = []
+    used_names = {}
+
+    os.makedirs(DASHBOARD_PER_DIR, exist_ok=True)
+
+    for idx, x in enumerate(creators):
+        h = x["username"].lower()
+        cm = cmeta.get(h, {})
+        user = cm.get("username") or x["username"]
+        name = (cm.get("name") or "").strip() or f"@{user}"
+        disp = strip_emoji(name).strip() or f"@{user}"
+        hist, _since = _hist_rows(h, s, now)
+        total_posts += len(hist)
+        cid = f"c{idx}"
+        pid = f"p{idx}"
+        checked = " checked" if idx == 0 else ""
+        radios.append(
+            f'<input type="radio" name="creator" id="{cid}"{checked}>'
+        )
+        labels.append(
+            f'<label class="tab" for="{cid}">'
+            f'{_esc(disp)}<span class="badge">{len(hist)}</span></label>'
+        )
+        show_rules.append(f"#{cid}:checked ~ .panels #{pid} {{ display:block; }}")
+        active_rules.append(
+            f"#{cid}:checked ~ .tabs label[for={cid}] {{"
+            f" background:var(--accent); border-color:var(--accent); color:#fff; }}"
+        )
+        active_rules.append(
+            f"#{cid}:checked ~ .tabs label[for={cid}] .badge {{"
+            f" background:rgba(255,255,255,.22); color:#fff; }}"
+        )
+
+        rows_html = []
+        md_rows = []
+        if not hist:
+            rows_html.append('<tr><td colspan="5" class="empty">暂无历史热帖</td></tr>')
+            md_rows.append("_暂无历史热帖_")
+        else:
+            for i, r in enumerate(hist, 1):
+                m = r.get("metrics") or {}
+                views = int(m.get("impression_count") or 0)
+                added = r.get("added_at")
+                is_new = False
+                if added:
+                    try:
+                        is_new = parse_ts(added) >= new_cut
+                    except Exception:
+                        is_new = False
+                tag = "🆕 " if is_new else ""
+                summ = tag + summary(r.get("text"), 60)
+                url = POST_URL.format(u=user, i=r["id"])
+                ts_bj = f"{bj(parse_ts(r['created_at'])):%Y-%m-%d %H:%M}"
+                rows_html.append(
+                    "<tr>"
+                    f"<td class='n'>{i}</td>"
+                    f"<td class='t'>{ts_bj}</td>"
+                    f"<td class='v'>{_esc(fmt_num(views))}</td>"
+                    f"<td class='s'>{_esc(summ)}</td>"
+                    f"<td class='l'><a href='{_esc(url)}' target='_blank' rel='noopener'>打开</a></td>"
+                    "</tr>"
+                )
+                md_rows.append(
+                    f"| {i} | {ts_bj} | {fmt_num(views)} | {summ.replace('|', '/')} | [打开]({url}) |"
+                )
+        fol = fmt_num(cm["followers"]) if cm.get("followers") is not None else "未知"
+        panels.append(
+            f'<section class="panel" id="{pid}">'
+            f'<div class="meta">@{_esc(user)} · {_esc(name)} · 粉丝 {_esc(fol)} · '
+            f'历史热帖 {len(hist)} 条（近 {s["history_days"]} 天 · ≥{_esc(fmt_thr(hmin))}）</div>'
+            f'<div class="table-wrap"><table><thead><tr>'
+            f'<th>#</th><th>发布时间（北京）</th><th>浏览量</th><th>内容摘要</th><th>链接</th>'
+            f'</tr></thead><tbody>{"".join(rows_html)}</tbody></table></div>'
+            f'</section>'
+        )
+
+        # one MD per creator: filename = safe display nickname
+        base = safe_name(disp, n=60, fallback="") or safe_name(user, n=60)
+        if base in used_names:
+            base = safe_name(f"{disp}_{user}", n=60, fallback=user)
+        used_names[base] = h
+        per_name = f"{base}.md"
+        per_path = os.path.join(DASHBOARD_PER_DIR, per_name)
+        per_body = [
+            f"# {disp} · 历史热帖",
+            "",
+            f"`@{user}` · 粉丝 {fol} · 历史热帖 {len(hist)} 条 · "
+            f"近 {s['history_days']} 天 · 浏览 ≥{fmt_thr(hmin)} · 近 36 小时新入榜标 🆕",
+            f"生成时间：{t:%Y-%m-%d %H:%M}（北京时间）",
+            "",
+        ]
+        if hist:
+            per_body += [
+                "| # | 发布时间（北京） | 浏览量 | 内容摘要 | 链接 |",
+                "|---|---|---|---|---|",
+                *md_rows,
+                "",
+            ]
+        else:
+            per_body += ["_暂无历史热帖_", ""]
+        per_body.append(
+            "注：只统计原创帖和引用帖（不含转推、回复）。浏览量为入榜时记录值；点「打开」到 X 上看最新数字。"
+        )
+        tmp_per = per_path + ".tmp"
+        with open(tmp_per, "w", encoding="utf-8") as f:
+            f.write("\n".join(per_body) + "\n")
+        os.replace(tmp_per, per_path)
+        per_written.append(per_name)
+        index_bullets.append(
+            f"- [{disp} · {len(hist)} 条](博主热帖/{per_name}) — `@{user}`"
+        )
+
+    # remove stale per-creator MDs not in this run
+    keep = set(per_written)
+    for fn in os.listdir(DASHBOARD_PER_DIR):
+        if fn.endswith(".md") and fn not in keep:
+            try:
+                os.remove(os.path.join(DASHBOARD_PER_DIR, fn))
+            except OSError:
+                pass
+
+    index_doc = "\n".join([
+        "# X 博主历史热帖 · 索引",
+        "",
+        f"生成时间：{t:%Y-%m-%d %H:%M}（北京时间） · 博主 {len(creators)} 人 · "
+        f"热帖合计 {total_posts} 条 · 近 {s['history_days']} 天 · 浏览 ≥{fmt_thr(hmin)}",
+        "",
+        "每位博主单独一份 Markdown（点开文件名即该博主的历史热帖表；聊天预览里点锚点标签无效，故不采用单页标签）。",
+        "",
+        *index_bullets,
+        "",
+        "桌面浏览器可另开 `历史热帖总览.html`（圆角按钮切换博主）。",
+        "",
+    ])
+    tmp_idx = DASHBOARD_INDEX_MD + ".tmp"
+    with open(tmp_idx, "w", encoding="utf-8") as f:
+        f.write(index_doc)
+    os.replace(tmp_idx, DASHBOARD_INDEX_MD)
+
+    guide = (
+        "**历史热帖总览 · 手机/聊天用法**\n\n"
+        "请打开附件 **`历史热帖总览_索引.md`**，再点进 **`博主热帖/`** 里对应昵称的文件"
+        f"（共 {len(per_written)} 位，一人一表）。\n\n"
+        "不要再依赖「点【标签】跳转」——聊天和 MD 预览里锚点不可靠。\n\n"
+        "电脑本地也可直接打开 `历史热帖总览.html` 用按钮切换博主。\n"
+    )
+    tmp_g = DASHBOARD_GUIDE_MD + ".tmp"
+    with open(tmp_g, "w", encoding="utf-8") as f:
+        f.write(guide)
+    os.replace(tmp_g, DASHBOARD_GUIDE_MD)
+
+    css_show = "\n".join(show_rules)
+    css_active = "\n".join(active_rules)
+
+    html_doc = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>X 博主历史热帖总览</title>
+<style>
+:root {{
+  --bg:#0f1419; --card:#1a2332; --border:#2f3b4a; --text:#e7ecf3; --muted:#8b9bb4;
+  --accent:#1d9bf0; --badge:#243447; --row:#151c27; --hover:#1e293b;
+}}
+* {{ box-sizing:border-box; }}
+body {{
+  margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+    "Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.45;
+}}
+header {{
+  padding:1.25rem 1.25rem .75rem; border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,#152033 0%,var(--bg) 100%);
+}}
+header h1 {{ margin:0 0 .35rem; font-size:1.35rem; font-weight:700; }}
+header .sub {{ color:var(--muted); font-size:.9rem; }}
+.dashboard {{ padding:0 0 2rem; }}
+.dashboard > input[type="radio"] {{ position:absolute; opacity:0; pointer-events:none; }}
+.tabs {{
+  display:flex; flex-wrap:wrap; gap:.55rem; padding:1rem 1.1rem;
+  border-bottom:1px solid var(--border); background:var(--card);
+  position:sticky; top:0; z-index:5;
+}}
+.tabs .tab {{
+  border:2px solid var(--border); background:#152033; color:var(--text);
+  border-radius:10px; padding:.55rem .95rem; font-size:.9rem; font-weight:600;
+  cursor:pointer; display:inline-flex; align-items:center; gap:.45rem;
+  user-select:none; line-height:1.2; box-shadow:0 1px 0 rgba(0,0,0,.25);
+}}
+.tabs .tab:hover {{ border-color:var(--accent); background:#1a2a40; }}
+.badge {{
+  background:#0f1419; color:#9ecbff; border:1px solid #2f3b4a; border-radius:8px;
+  padding:.12rem .45rem; font-size:.75rem; font-weight:700; min-width:1.5rem; text-align:center;
+}}
+.panels {{ padding:1rem 1.1rem 0; }}
+.panel {{ display:none; border:1px solid var(--border); border-radius:12px; background:var(--card); overflow:hidden; }}
+{css_show}
+{css_active}
+.meta {{ color:var(--muted); font-size:.88rem; margin:.75rem 1rem .5rem; }}
+.table-wrap {{ overflow-x:auto; margin:0 0 .85rem; padding:0 .75rem .75rem; }}
+table {{ width:100%; border-collapse:collapse; font-size:.9rem; border:1px solid var(--border); border-radius:10px; overflow:hidden; }}
+th, td {{ padding:.55rem .7rem; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; }}
+th {{ background:#121a26; color:var(--muted); font-weight:600; white-space:nowrap; }}
+tr:nth-child(even) td {{ background:var(--row); }}
+tr:hover td {{ background:var(--hover); }}
+td.n {{ width:3rem; color:var(--muted); }}
+td.t {{ white-space:nowrap; width:9.5rem; }}
+td.v {{ white-space:nowrap; width:5.5rem; color:#7dd3fc; font-variant-numeric:tabular-nums; }}
+td.s {{ max-width:42rem; word-break:break-word; }}
+td.l a {{ color:var(--accent); text-decoration:none; }}
+td.l a:hover {{ text-decoration:underline; }}
+td.empty {{ color:var(--muted); text-align:center; padding:1.5rem; }}
+footer {{ color:var(--muted); font-size:.8rem; padding:1rem 1.1rem 1.5rem; }}
+</style>
+</head>
+<body>
+<header>
+  <h1>X 博主历史热帖总览</h1>
+  <div class="sub">生成时间：{t:%Y-%m-%d %H:%M}（北京时间） · 博主 {len(creators)} 人 · 热帖合计 {total_posts} 条 ·
+  近 {s["history_days"]} 天 · 浏览 ≥{_esc(fmt_thr(hmin))} · 近 36 小时新入榜标 🆕 · 点上方标签切换博主（无需脚本）</div>
+</header>
+<div class="dashboard">
+{"".join(radios)}
+<nav class="tabs" aria-label="博主标签">{"".join(labels)}</nav>
+<div class="panels">{"".join(panels)}</div>
+</div>
+<footer>数据来自 state/history.json；例行 finalize / report / seed-history / dashboard 会覆盖更新本页。点「打开」到 X 上看最新数字。手机/聊天请用 reports/博主热帖/ 下每位博主的 .md 与 历史热帖总览_索引.md。</footer>
+</body>
+</html>
+"""
+    os.makedirs(REPORTS, exist_ok=True)
+    tmp = DASHBOARD_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(html_doc)
+    os.replace(tmp, DASHBOARD_PATH)
+    # thin pointer replacing old tabbed single MD (anchors never worked in chat preview)
+    thin_md = "\n".join([
+        "# X 博主历史热帖总览",
+        "",
+        f"生成时间：{t:%Y-%m-%d %H:%M}（北京时间） · 博主 {len(creators)} 人 · 热帖合计 {total_posts} 条",
+        "",
+        "聊天/手机请用 **[历史热帖总览_索引.md](历史热帖总览_索引.md)**，"
+        "再打开 **[博主热帖/](博主热帖/)** 里对应昵称的文件（一人一表）。",
+        "",
+        "桌面请打开 **[历史热帖总览.html](历史热帖总览.html)** 用按钮切换博主。",
+        "",
+    ])
+    tmp_md = DASHBOARD_MD_PATH + ".tmp"
+    with open(tmp_md, "w", encoding="utf-8") as f:
+        f.write(thin_md)
+    os.replace(tmp_md, DASHBOARD_MD_PATH)
+    print(
+        f"DASHBOARD\t{DASHBOARD_PATH}\tcreators={len(creators)}\tposts={total_posts}"
+        f"\tper_md={len(per_written)}\tindex={DASHBOARD_INDEX_MD}",
+        file=sys.stderr,
+    )
+    return DASHBOARD_PATH
+
+
+
+
+def finalize(run_dir, force=False, now=None):
+    """ingest 之后调用：毕业判定 → 仅当有帖新进入历史热帖时出报告并 PUSH。
+    普通新推文不再触发推送；无新入榜则 NO_UPDATES。输出 PUSH/NO_UPDATES 行。"""
+    now = now or now_utc()
+    pl = load(os.path.join(run_dir, "plan.json"), {})
+    run_started = parse_ts(pl["run_started"]) if pl.get("run_started") else now - dt.timedelta(hours=1)
+    grads = graduate(run_started, now)
+    t = bj(now)
+    lines = []
+    for h in _creator_handles():
+        g = grads.get(h, [])
+        if g or force:
+            path, _nt, _nn, nh = creator_report(h, now, None, {e["id"] for e in g})
+            nm = strip_emoji(load(os.path.join(STATE, "creators_meta.json"), {}).get(h, {}).get("name") or h).strip() or h
+            if g:
+                cap = f"{nm} 有 {len(g)} 条推文进入历史热帖（{t:%H:%M} 采集）"
+            else:
+                cap = f"{nm} 历史热帖共 {nh} 条（{t:%H:%M} 强制报告）"
+            lines.append("PUSH\t%s\t%s" % (path, cap))
+        else:
+            lines.append("NO_UPDATES\t@%s" % h)
+    try:
+        build_dashboard(now)
+    except Exception as e:
+        print(f"WARN dashboard: {e}", file=sys.stderr)
+    return lines
+
+
+
+# ---------------- plan ----------------
+
+def plan(args):
+    s = settings()
+    c = cfg()
+    now = now_utc()
+    t = bj(now)
+    run_dir = os.path.join(RAW, f"{t:%Y%m%d_%H%M}")
+    os.makedirs(run_dir, exist_ok=True)
+    print(f"RUN_DIR={run_dir}")
+    cmeta = load(os.path.join(STATE, "creators_meta.json"), {})
+    posts = load(os.path.join(STATE, "posts.json"), {})
+    calls = []
+    active = [x for x in c["creators"] if not x.get("disabled")]
+    if "--history" in args:
+        h = args[args.index("--history") + 1].lower()
+        pages = int(args[args.index("--pages") + 1]) if "--pages" in args else 60
+        x = next(x for x in c["creators"] if x["username"].lower() == h)
+        since = now - dt.timedelta(days=s["history_days"])
+        calls.append({"save_as": os.path.join(run_dir, f"10_hist_p1_{h}.json"), "namespace": "x",
+                      "toolName": "get_users_posts", "paginate": True, "max_pages": pages,
+                      "arguments": {"id": x.get("id", "<从 00_users 结果取 id>"), "max_results": 25,
+                                    "exclude": "retweets,replies",
+                                    "start_time": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                    "post.fields": POST_FIELDS}})
+    else:
+        # 1) 查用户（粉丝数/id）：只在缺 id 或超过 12 小时没查过时才查，每 100 个 1 次
+        stale = [x["username"] for x in active
+                 if not x.get("id") or not cmeta.get(x["username"].lower(), {}).get("user_fetched_at")
+                 or now - parse_ts(cmeta[x["username"].lower()]["user_fetched_at"]) > dt.timedelta(hours=12)]
+        for i in range(0, len(stale), 100):
+            calls.append({"save_as": os.path.join(run_dir, f"00_users_{i//100}.json"), "namespace": "x",
+                          "toolName": "get_users_by_usernames", "paginate": False,
+                          "arguments": {"usernames": ",".join(stale[i:i+100]),
+                                        "user.fields": "id,name,username,public_metrics"}})
+        # 2) 每个博主拉最近 24 小时的原创/引用
+        since = now - dt.timedelta(hours=s["daily_window_hours"])
+        for j, x in enumerate(active, 1):
+            h = x["username"].lower()
+            calls.append({"save_as": os.path.join(run_dir, f"{j:02d}_daily_{h}.json"), "namespace": "x",
+                          "toolName": "get_users_posts", "paginate": True,
+                          "max_pages": s["daily_max_pages_per_creator"],
+                          "arguments": {"id": x.get("id", "<从 00_users 结果取 id>"), "max_results": 25,
+                                        "exclude": "retweets,replies",
+                                        "start_time": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                        "post.fields": POST_FIELDS}})
+        # 3) 刷新所有还没毕业的帖子（24h 内 + 刚满 24h 待毕业），每 100 个 1 次；放最后，保证是最新数
+        hs = {x["username"].lower() for x in active}
+        ids = sorted((r["id"] for r in posts.values() if r["handle"] in hs and _pending(r, s) and not r.get("gone")),
+                     reverse=True)
+        for k in range(0, len(ids), 100):
+            calls.append({"save_as": os.path.join(run_dir, f"90_ids_{k//100}.json"), "namespace": "x",
+                          "toolName": "get_posts_by_ids", "paginate": False,
+                          "arguments": {"ids": ",".join(ids[k:k+100]), "post.fields": POST_FIELDS}})
+    save(os.path.join(run_dir, "plan.json"), {"run_started": now.isoformat(), "calls": calls})
+    print(f"CALLS={len(calls)}（不含翻页）")
+    for cl in calls:
+        print(json.dumps(cl, ensure_ascii=False))
+
+
+def status():
+    c = cfg()
+    posts = load(os.path.join(STATE, "posts.json"), {})
+    cmeta = load(os.path.join(STATE, "creators_meta.json"), {})
+    for x in c["creators"]:
+        h = x["username"].lower()
+        n = sum(1 for r in posts.values() if r["handle"] == h)
+        cm = cmeta.get(h, {})
+        print(f"@{h}: posts={n} oldest={cm.get('oldest_fetched')} followers={cm.get('followers')}")
+    print(load(os.path.join(STATE, "meta.json"), {}))
+
+
+def main():
+    a = sys.argv[1:]
+    if not a:
+        print(__doc__); return
+    now = None
+    if "--now" in a:
+        now = parse_ts(a[a.index("--now") + 1])
+    if a[0] == "plan":
+        plan(a[1:])
+    elif a[0] == "ingest":
+        ingest(a[1])
+    elif a[0] == "finalize":
+        for ln in finalize(a[1], force="--force" in a, now=now):
+            print(ln)
+    elif a[0] == "report":
+        p, nt, nn, nh = creator_report(a[1], now)
+        print(f"{p}\tnew_hist={nn} history={nh}")
+        try:
+            build_dashboard(now)
+        except Exception as e:
+            print(f"WARN dashboard: {e}", file=sys.stderr)
+    elif a[0] == "seed-history":
+        seed_history(now)
+    elif a[0] == "dashboard":
+        p = build_dashboard(now)
+        print(p)
+    elif a[0] == "status":
+        status()
+    else:
+        print(__doc__)
+
+
+if __name__ == "__main__":
+    main()

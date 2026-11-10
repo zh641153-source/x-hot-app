@@ -1,0 +1,6 @@
+<cursor_untrusted_data_1337 source="CallDynamicTool">
+
+{"errors":[{"detail":"Sorry, you are not authorized to see the user with id: [1501915925578420228].","parameter":"id","resource_id":"1501915925578420228","resource_type":"user","section":"data","title":"Authorization Error","type":"https://api.x.com/2/problems/not-authorized-for-resource","value":"1501915925578420228"}]}
+X reads left for this user: 25 of 30 this minute (resets at 2026-11-09T11:15:00.000Z), 993 of 1000 today (resets at 2026-11-10T00:00:00.000Z).
+
+</cursor_untrusted_data_1337>

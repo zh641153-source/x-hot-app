@@ -58,6 +58,9 @@ class MainActivity : AppCompatActivity() {
     private val sortMenu = CreatorSortMenuState()
     private var sortPopup: ListPopupWindow? = null
     private var lastPopupDismissAt = 0L
+    private var creatorPopup: ListPopupWindow? = null
+    private var lastCreatorPopupDismissAt = 0L
+    private lateinit var creatorTriangle: ImageView
     private lateinit var status: TextView
     private lateinit var chipScroll: HorizontalScrollView
     private lateinit var chips: ChipGroup
@@ -151,6 +154,7 @@ class MainActivity : AppCompatActivity() {
         tabs.addTab(tabs.newTab().setText("博主"))
         tabs.addTab(tabs.newTab().setText("热贴"))
         tabs.addTab(tabs.newTab().setText("收藏"))
+        installCreatorTab()
         root.addView(tabs)
 
         chips = ChipGroup(this).apply {
@@ -180,7 +184,10 @@ class MainActivity : AppCompatActivity() {
             override fun onTabSelected(t: TabLayout.Tab) {
                 if (searchQuery.isNotEmpty()) return
                 tab = t.position
-                if (tab != 0) dismissSortPopup()
+                if (tab != 0) {
+                    dismissSortPopup()
+                    dismissCreatorPopup()
+                }
                 render()
                 rv.scrollToPosition(0)
             }
@@ -192,6 +199,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun openSearch() {
         dismissSortPopup()
+        dismissCreatorPopup()
         searchBar.visibility = View.VISIBLE
         etSearch.requestFocus()
         (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
@@ -215,11 +223,13 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         if (sortPopup?.isShowing == true) { dismissSortPopup(); return }
+        if (creatorPopup?.isShowing == true) { dismissCreatorPopup(); return }
         if (searchBar.visibility == View.VISIBLE) closeSearch() else super.onBackPressed()
     }
 
     override fun onDestroy() {
         dismissSortPopup()
+        dismissCreatorPopup()
         super.onDestroy()
     }
 
@@ -308,6 +318,121 @@ class MainActivity : AppCompatActivity() {
         return out.sortedByDescending { it.sortKey }
     }
 
+    private fun installCreatorTab() {
+        val dp = resources.displayMetrics.density
+        val tab0 = tabs.getTabAt(0) ?: return
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val title = TextView(this).apply {
+            text = "博主"
+            textSize = 14f
+            tabs.tabTextColors?.let { setTextColor(it) }
+        }
+        creatorTriangle = ImageView(this).apply {
+            setImageResource(R.drawable.ic_sort_tri)
+            contentDescription = "全部博主"
+            val pad = (6 * dp).toInt()
+            setPadding(pad, pad, pad, pad)
+            val s = (28 * dp).toInt()
+            layoutParams = LinearLayout.LayoutParams(s, s)
+            setOnClickListener { onCreatorTabTriangleClick() }
+        }
+        row.addView(title)
+        row.addView(creatorTriangle)
+        tab0.customView = row
+    }
+
+    private fun onCreatorTabTriangleClick() {
+        if (creatorPopup?.isShowing == true) {
+            dismissCreatorPopup()
+            return
+        }
+        if (SystemClock.uptimeMillis() - lastCreatorPopupDismissAt < 160) return
+        dismissSortPopup()
+        if (searchQuery.isNotEmpty()) closeSearch()
+        if (tab != 0) tabs.getTabAt(0)?.select()
+        showCreatorPopup()
+    }
+
+    private fun creatorLabels(): List<String> {
+        val cs = data?.optJSONArray("creators") ?: return emptyList()
+        return (0 until cs.length()).map {
+            val c = cs.getJSONObject(it)
+            CreatorList.label(c.optString("n"), c.optString("u"))
+        }
+    }
+
+    private fun showCreatorPopup() {
+        val labels = creatorLabels()
+        if (labels.isEmpty()) {
+            Toast.makeText(this, "暂无博主", Toast.LENGTH_SHORT).show()
+            return
+        }
+        dismissCreatorPopup()
+        val dp = resources.displayMetrics.density
+        val dm = resources.displayMetrics
+        val popup = ListPopupWindow(this)
+        popup.anchorView = creatorTriangle
+        popup.setAdapter(ArrayAdapter(this, android.R.layout.simple_list_item_single_choice, labels))
+        popup.isModal = true
+        val width = (280 * dp).toInt().coerceAtMost((dm.widthPixels * 0.8f).toInt())
+        popup.setContentWidth(width.coerceAtLeast((200 * dp).toInt()))
+        val item = (48 * dp).toInt()
+        val max = (dm.heightPixels * 0.6f).toInt().coerceAtMost(dm.heightPixels - (24 * dp).toInt())
+        popup.height = CreatorList.cappedHeight(labels.size, item, max)
+        popup.setOnItemClickListener { _, _, pos, _ ->
+            val switched = pos != creatorIdx || tab != 0
+            sortMenu.onNameClick(pos)
+            creatorIdx = sortMenu.selectedIndex
+            dismissCreatorPopup()
+            if (tab != 0) tabs.getTabAt(0)?.select()
+            else render()
+            scrollChipIntoView(creatorIdx)
+            if (switched) rv.scrollToPosition(0)
+        }
+        popup.setOnDismissListener {
+            lastCreatorPopupDismissAt = SystemClock.uptimeMillis()
+            creatorPopup = null
+            if (::creatorTriangle.isInitialized)
+                creatorTriangle.setImageResource(R.drawable.ic_sort_tri)
+        }
+        creatorPopup = popup
+        popup.show()
+        popup.listView?.choiceMode = ListView.CHOICE_MODE_SINGLE
+        if (creatorIdx in labels.indices) popup.listView?.setItemChecked(creatorIdx, true)
+        if (::creatorTriangle.isInitialized)
+            creatorTriangle.setImageResource(R.drawable.ic_sort_tri_up)
+    }
+
+    private fun syncCreatorPopup() {
+        if (creatorPopup?.isShowing != true) return
+        val labels = creatorLabels()
+        if (labels.isEmpty()) {
+            dismissCreatorPopup()
+            return
+        }
+        showCreatorPopup()
+    }
+
+    private fun dismissCreatorPopup() {
+        val popup = creatorPopup ?: return
+        popup.setOnDismissListener(null)
+        if (popup.isShowing) popup.dismiss()
+        creatorPopup = null
+        if (::creatorTriangle.isInitialized)
+            creatorTriangle.setImageResource(R.drawable.ic_sort_tri)
+    }
+
+    private fun scrollChipIntoView(index: Int) {
+        val chip = chips.getChildAt(index) ?: return
+        chipScroll.post {
+            val x = chip.left - (chipScroll.width - chip.width) / 2
+            chipScroll.smoothScrollTo(x.coerceAtLeast(0), 0)
+        }
+    }
+
     private fun makeCreatorChip(index: Int, label: String): Chip {
         val dp = resources.displayMetrics.density
         return Chip(this).apply {
@@ -324,6 +449,7 @@ class MainActivity : AppCompatActivity() {
                 sortMenu.onNameClick(index)
                 creatorIdx = sortMenu.selectedIndex
                 dismissSortPopup()
+                dismissCreatorPopup()
                 render()
                 if (switched) rv.scrollToPosition(0)
             }
@@ -356,6 +482,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSortPopup(anchor: View) {
+        dismissCreatorPopup()
         dismissSortPopup(keepState = true)
         val labels = arrayOf("最新", "最早")
         val popup = ListPopupWindow(this)
@@ -411,6 +538,7 @@ class MainActivity : AppCompatActivity() {
 
         if (searching && d != null) {
             dismissSortPopup()
+            dismissCreatorPopup()
             chipScroll.visibility = View.GONE
             tabs.visibility = View.GONE
             val hits = searchAll(d, searchQuery)
@@ -437,6 +565,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     syncCreatorChips()
+                    syncCreatorPopup()
                     if (cs.length() > 0) {
                         val c = cs.getJSONObject(creatorIdx)
                         rows.add(Row.Header("${c.optString("n")} @${c.optString("u")} · 粉丝 ${fmt(c.optLong("f"))} · ${c.getJSONArray("posts").length()} 条 ≥10万"))
